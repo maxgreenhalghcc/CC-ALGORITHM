@@ -1,0 +1,140 @@
+from flask import Flask, request, jsonify
+import random
+
+app = Flask(__name__)
+
+def oz_to_ml(oz):
+    return oz * 29.5735
+
+def generate_bespoke_cocktail(user):
+    # === FLAVOR SOURCES === #
+
+    music_strength = {
+        'jazz/blues': 1.5,
+        'rap': 1.75,
+        'pop': 2.0,
+        'rock': 2.25
+    }
+
+    dining_balances = {
+        'a balanced blend of flavours': {'modifier': 0.75, 'sweetener': 0.5},
+        'subtle tastes which advertise freshness': {'modifier': 0.5, 'sweetener': 0.25},
+        'refreshing and vibrant flavours which awaken my sneses': {'modifier': 0.75, 'sweetener': 0.25},
+        'a sweet tooth indulging in rich flavours': {'modifier': 1.0, 'sweetener': 0.75},
+    }
+
+    color_modifiers = {
+        'emerald': ['green chartreuse', 'mint liqueur', 'basil cordial'],
+        'amber': ['amaro', 'cinnamon syrup', 'ginger liqueur'],
+        'pale pink': ['rose liqueur', 'hibiscus syrup'],
+        'citrus yellow': ['limoncello', 'grapefruit cordial']
+    }
+
+    sweetener_styles = {
+        'classic': ['simple syrup', 'honey syrup'],
+        'rich': ['maple syrup', 'demerara syrup'],
+        'floral': ['elderflower syrup', 'rose syrup'],
+        'zesty': ['lemon verbena syrup', 'lime cordial']
+    }
+
+    seasonal_accents = {
+        'spring': ['cucumber water', 'lavender mist'],
+        'summer': ['fresh mint', 'citrus zest'],
+        'autumn': ['smoked apple', 'nutmeg dust'],
+        'winter': ['cranberry bitters', 'vanilla essence']
+    }
+
+    aroma_garnish = {
+        'floral': 'lavender sprig',
+        'citrus': 'lemon twist',
+        'woody': 'rosemary sprig',
+        'sweet': 'maraschino cherry'
+    }
+
+    dessert_twists = {
+        'vanilla': ['vanilla', 'rich', 'sweet'],
+        'tangfastics': ['zesty', 'vibrant', 'sour'],
+        'fresh fruit': ['fresh', 'subtle', 'natural']
+    }
+
+    glassware = {
+        'modern house': {'type': 'short glass', 'min_ml': 150},
+        'tree house': {'type': 'gin glass', 'min_ml': 250},
+        'beach house': {'type': 'long glass', 'min_ml': 300},
+        'haunted house': {'type': 'skull glass', 'min_ml': 100}
+    }
+
+    juice_preferences = {
+        'spring': 'orange',
+        'summer': 'pineapple',
+        'autumn': 'cranberry',
+        'winter': 'passion fruit'
+    }
+
+    dining_juice_map = {
+        'a balanced blend of flavours': 'orange',
+        'subtle tastes which advertise freshness': 'cranberry',
+        'refreshing and vibrant flavours which awaken my sneses': 'pineapple',
+        'a sweet tooth indulging in rich flavours': 'passion fruit'
+    }
+
+    flavour_profile_map = {
+        'orange': ['balanced', 'classic', 'zesty'],
+        'pineapple': ['vibrant', 'tropical', 'zesty'],
+        'cranberry': ['fresh', 'subtle', 'dry'],
+        'passion fruit': ['sweet', 'indulgent', 'exotic']
+    }
+
+    # === LOGIC === #
+
+    spirit = user['base_spirit']
+    strength = music_strength.get(user['music_preference'].lower(), 2.0)
+    balance = dining_balances.get(user['dining_style'].lower(), {'modifier': 0.75, 'sweetener': 0.5})
+    modifier_choices = color_modifiers.get(user['modifier_question'].lower(), ['vermouth'])
+    sweetener_choices = sweetener_styles.get(user['sweetener_question'].lower(), ['simple syrup'])
+    seasonal_note = random.choice(seasonal_accents.get(user['season'], []))
+    garnish = aroma_garnish.get(user['aroma_preference'].lower(), 'lemon twist')
+    glass = glassware.get(user['house_type'], {'type': 'short glass', 'min_ml': 150})
+
+    # Determine juice preference by cross-referencing season and dining style
+    juice_season = juice_preferences.get(user['season'], 'orange')
+    juice_dining = dining_juice_map.get(user['dining_style'].lower(), 'orange')
+    juice = random.choice([juice_season, juice_dining])
+
+    # Collate flavour cues from dessert, aroma, juice and dining style
+    preferred_profiles = set(flavour_profile_map.get(juice, []))
+    preferred_profiles.update(dessert_twists.get(user['favourite_dessert'].lower(), []))
+    preferred_profiles.add(user['aroma_preference'].lower())
+    preferred_profiles.update(user['dining_style'].lower().split())
+
+    # Align modifier and sweetener
+    modifier = next((m for m in modifier_choices if any(p in m.lower() for p in preferred_profiles)), random.choice(modifier_choices))
+    sweetener = next((s for s in sweetener_choices if any(p in s.lower() for p in preferred_profiles)), random.choice(sweetener_choices))
+
+    # Calculate base volume
+    base_ml = oz_to_ml(strength + balance['modifier'] + balance['sweetener'])
+    top_up_needed = max(0, glass['min_ml'] - base_ml)
+
+    # === SIMPLIFIED RECIPE FOR BARTENDERS === #
+    recipe = {
+        'Glass': glass['type'],
+        'Alcohol': f"{strength:.2f} oz {spirit}",
+        'Modifier': f"{balance['modifier']:.2f} oz {modifier}",
+        'Sweetener': f"{balance['sweetener']:.2f} oz {sweetener}",
+        'Juice': f"{juice} juice",
+        'Garnish': garnish
+    }
+
+    if top_up_needed > 20:
+        recipe['Top Up'] = f"Top up with {int(top_up_needed)}ml soda, tonic, or seasonal infusion"
+
+    return recipe
+
+@app.route('/submit-cocktail', methods=['POST'])
+def cocktail_from_form():
+    user_data = request.json  # Ensure Webflow sends it as JSON
+    cocktail = generate_bespoke_cocktail(user_data)
+    return jsonify(cocktail)
+
+if __name__ == '__main__':
+    app.run(debug=True)
