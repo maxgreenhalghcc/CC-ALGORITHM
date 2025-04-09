@@ -1,11 +1,14 @@
+from flask import Flask, request, jsonify
 import random
 
+app = Flask(__name__)
 
 def oz_to_ml(oz):
     return oz * 29.5735
 
-def generate_bespoke_cocktail(user):
-    # === FLAVOR SOURCES === #
+@app.route('/generate', methods=['POST'])
+def generate_bespoke_cocktail():
+    user = request.get_json()
 
     music_strength = {
         'jazz/blues': 1.5,
@@ -72,7 +75,7 @@ def generate_bespoke_cocktail(user):
     dining_juice_map = {
         'a balanced blend of flavours': 'orange',
         'subtle tastes which advertise freshness': 'cranberry',
-        'refreshing and vibrant flavours which awaken my sneses': 'pineapple',
+        'refreshing and vibrant flavours which awaken my senses': 'pineapple',
         'a sweet tooth indulging in rich flavours': 'passion fruit'
     }
 
@@ -84,56 +87,45 @@ def generate_bespoke_cocktail(user):
     }
 
     # === LOGIC === #
+    spirit = user.get('base_spirit', 'gin')
+    strength = music_strength.get(user.get('music_preference', '').lower(), 2.0)
+    balance = dining_balances.get(user.get('dining_style', '').lower(), {'modifier': 0.75, 'sweetener': 0.5})
+    modifier_choices = color_modifiers.get(user.get('modifier_question', '').lower(), ['vermouth'])
+    sweetener_choices = sweetener_styles.get(user.get('sweetener_question', '').lower(), ['simple syrup'])
+    seasonal_note = random.choice(seasonal_accents.get(user.get('season', 'spring'), []))
+    garnish = aroma_garnish.get(user.get('aroma_preference', '').lower(), 'lemon twist')
+    glass = glassware.get(user.get('house_type', 'modern house'), {'type': 'short glass', 'min_ml': 150})
 
-    spirit = user['base_spirit']
-    strength = music_strength.get(user['music_preference'].lower(), 2.0)
-    balance = dining_balances.get(user['dining_style'].lower(), {'modifier': 0.75, 'sweetener': 0.5})
-    modifier_choices = color_modifiers.get(user['modifier_question'].lower(), ['vermouth'])
-    sweetener_choices = sweetener_styles.get(user['sweetener_question'].lower(), ['simple syrup'])
-    seasonal_note = random.choice(seasonal_accents.get(user['season'], []))
-    garnish = aroma_garnish.get(user['aroma_preference'].lower(), 'lemon twist')
-    glass = glassware.get(user['house_type'], {'type': 'short glass', 'min_ml': 150})
-
-    # Determine juice preference by cross-referencing season and dining style
-    juice_season = juice_preferences.get(user['season'], 'orange')
-    juice_dining = dining_juice_map.get(user['dining_style'].lower(), 'orange')
+    juice_season = juice_preferences.get(user.get('season', 'spring'), 'orange')
+    juice_dining = dining_juice_map.get(user.get('dining_style', '').lower(), 'orange')
     juice = random.choice([juice_season, juice_dining])
 
-    # Collate flavour cues from dessert, aroma, juice and dining style
     preferred_profiles = set(flavour_profile_map.get(juice, []))
-    preferred_profiles.update(dessert_twists.get(user['favourite_dessert'].lower(), []))
-    preferred_profiles.add(user['aroma_preference'].lower())
-    preferred_profiles.update(user['dining_style'].lower().split())
+    preferred_profiles.update(dessert_twists.get(user.get('favourite_dessert', '').lower(), []))
+    preferred_profiles.add(user.get('aroma_preference', '').lower())
+    preferred_profiles.update(user.get('dining_style', '').lower().split())
 
-    # Align modifier and sweetener
     modifier = next((m for m in modifier_choices if any(p in m.lower() for p in preferred_profiles)), random.choice(modifier_choices))
     sweetener = next((s for s in sweetener_choices if any(p in s.lower() for p in preferred_profiles)), random.choice(sweetener_choices))
 
-    # Calculate base volume
     base_ml = oz_to_ml(strength + balance['modifier'] + balance['sweetener'])
     top_up_needed = max(0, glass['min_ml'] - base_ml)
 
-    # === SIMPLIFIED RECIPE FOR BARTENDERS === #
     recipe = {
         'Glass': glass['type'],
         'Alcohol': f"{strength:.2f} oz {spirit}",
         'Modifier': f"{balance['modifier']:.2f} oz {modifier}",
         'Sweetener': f"{balance['sweetener']:.2f} oz {sweetener}",
         'Juice': f"{juice} juice",
-        'Lengthener': f"{juice} juice",
-        'Garnish': garnish
+        'Garnish': garnish,
+        'Seasonal Accent': seasonal_note
     }
 
     if top_up_needed > 20:
-        recipe['Top Up'] = f"Top up with {int(top_up_needed)}ml lemonade / juice"
+        recipe['Top Up'] = f"Top up with {int(top_up_needed)}ml lemonade or {juice} juice"
 
-    return recipe
+    return jsonify(recipe)
 
-# === EXAMPLE USER INPUT === #
-
-
-cocktail = generate_bespoke_cocktail(user_data)
-for k, v in cocktail.items():
-    print(f"{k}: {v}")
-
-
+# Optional: local run
+if __name__ == '__main__':
+    app.run(debug=True)
