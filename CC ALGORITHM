@@ -1,7 +1,5 @@
-from flask import Flask, request, jsonify
 import random
 
-app = Flask(__name__)
 
 def oz_to_ml(oz):
     return oz * 29.5735
@@ -19,20 +17,20 @@ def generate_bespoke_cocktail(user):
     dining_balances = {
         'a balanced blend of flavours': {'modifier': 0.75, 'sweetener': 0.5},
         'subtle tastes which advertise freshness': {'modifier': 0.5, 'sweetener': 0.25},
-        'refreshing and vibrant flavours which awaken my sneses': {'modifier': 0.75, 'sweetener': 0.25},
+        'refreshing and vibrant flavours which awaken my senses': {'modifier': 0.75, 'sweetener': 0.25},
         'a sweet tooth indulging in rich flavours': {'modifier': 1.0, 'sweetener': 0.75},
     }
 
     color_modifiers = {
-        'emerald': ['green chartreuse', 'mint liqueur', 'basil cordial'],
-        'amber': ['amaro', 'cinnamon syrup', 'ginger liqueur'],
-        'pale pink': ['rose liqueur', 'hibiscus syrup'],
+        'emerald': ['mint leaves in the glass'],
+        'amber': ['amaretto'],
+        'pale pink': ['grenadine'],
         'citrus yellow': ['limoncello', 'grapefruit cordial']
     }
 
     sweetener_styles = {
-        'classic': ['simple syrup', 'honey syrup'],
-        'rich': ['maple syrup', 'demerara syrup'],
+        'classic': ['simple syrup'],
+        'rich': ['maple syrup'],
         'floral': ['elderflower syrup', 'rose syrup'],
         'zesty': ['lemon verbena syrup', 'lime cordial']
     }
@@ -122,19 +120,20 @@ def generate_bespoke_cocktail(user):
         'Modifier': f"{balance['modifier']:.2f} oz {modifier}",
         'Sweetener': f"{balance['sweetener']:.2f} oz {sweetener}",
         'Juice': f"{juice} juice",
+        'Lengthener': f"{juice} juice",
         'Garnish': garnish
     }
 
     if top_up_needed > 20:
-        recipe['Top Up'] = f"Top up with {int(top_up_needed)}ml soda, tonic, or seasonal infusion"
+        recipe['Top Up'] = f"Top up with {int(top_up_needed)}ml lemonade / juice"
 
     return recipe
 
-@app.route('/submit-cocktail', methods=['POST'])
-def cocktail_from_form():
-    user_data = request.json  # Ensure Webflow sends it as JSON
-    cocktail = generate_bespoke_cocktail(user_data)
-    return jsonify(cocktail)
+# === EXAMPLE USER INPUT === #
 
-if __name__ == '__main__':
-    app.run(debug=True)
+
+cocktail = generate_bespoke_cocktail(user_data)
+for k, v in cocktail.items():
+    print(f"{k}: {v}")
+
+
